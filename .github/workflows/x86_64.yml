@@ -1,24 +1,31 @@
-name: Build and Upload ISO
+name: Build ToaruOS ISO
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive  # Initializes the kuroko submodule
 
-      - name: Pull Builder Image
-        run: docker pull toaruos/build-tools:1.99.x
+    - name: Pull Docker image
+      run: docker pull toaruos/build-tools:1.99.x
 
-      - name: Build ToaruOS
-        run: docker run -v ${GITHUB_WORKSPACE}:/root/misaka -w /root/misaka -e LANG=C.UTF-8 -t toaruos/build-tools:1.99.x util/build-in-docker.sh
+    - name: Build ISO
+      run: |
+        docker run -v ${{ github.workspace }}:/root/misaka -w /root/misaka -e LANG=C.UTF-8 -t toaruos/build-tools:1.99.x util/build-in-docker.sh
 
-      - name: Find and Upload ISO
-        uses: actions/upload-artifact@v4
-        with:
-          name: toaruos.iso
-          path: "*.iso"
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: toaruos-iso
+        path: image.iso
+        retention-days: 30  # Keep artifacts for 30 days; adjust as needed
