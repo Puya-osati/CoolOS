@@ -5,27 +5,63 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:   # برای بیلد دستی
 
 jobs:
-  build:
+  build-iso:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write      # برای آپلود Release (اختیاری)
+    
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
-        submodules: recursive  # Initializes the kuroko submodule
+        submodules: recursive
 
-    - name: Pull Docker image
-      run: docker pull toaruos/build-tools:1.99.x
-
-    - name: Build ISO
+    - name: Free up disk space
       run: |
-        docker run -v ${{ github.workspace }}:/root/misaka -w /root/misaka -e LANG=C.UTF-8 -t toaruos/build-tools:1.99.x util/build-in-docker.sh
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/lib/android
 
-    - name: Upload ISO artifact
+    - name: Pull latest build-tools
+      run: docker pull toaruos/build-tools:latest
+
+    - name: Build full HDD image + ISO
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/root/toaruos \
+          -w /root/toaruos \
+          -e LANG=C.UTF-8 \
+          toaruos/build-tools:latest \
+          /bin/bash -c "
+            make clean &&
+            make all &&
+            make apps-all &&
+            make ramdisk-apps &&
+            make ramdisk &&
+            make hdd &&
+            make iso
+          "
+
+    - name: Rename ISO with commit hash
+      run: |
+        mv toaruos.iso toaruos-${{ github.sha }}.iso
+
+    - name: Upload ISO as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: toaruos-iso
-        path: image.iso
-        retention-days: 30  # Keep artifacts for 30 days; adjust as needed
+        name: ToaruOS-${{ github.sha }}
+        path: toaruos-${{ github.sha }}.iso
+        retention-days: 90
+
+    - name: Create Release and upload ISO (only on push to master)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: toaruos-${{ github.sha }}.iso
+        tag_name: nightly-${{ github.sha }}
+        name: Nightly Build ${{ github.sha }}
+        draft: false
+        prerelease: true
