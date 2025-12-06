@@ -1,62 +1,24 @@
-name: x86-64 CD Image
+name: Build and Upload ISO
 
-on: [push, workflow_dispatch]
+on: [workflow_dispatch]
 
 jobs:
-  build-image:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Clone Repository
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Clone Kuroko
-        uses: actions/checkout@v2
-        with:
-          repository: kuroko-lang/kuroko
-          path: kuroko
-
-      - name: Checkout Kuroko
-        run: git submodule update --init kuroko
+          submodules: recursive
 
       - name: Pull Builder Image
         run: docker pull toaruos/build-tools:1.99.x
 
-      - name: Run Builder
+      - name: Build ToaruOS
         run: docker run -v ${GITHUB_WORKSPACE}:/root/misaka -w /root/misaka -e LANG=C.UTF-8 -t toaruos/build-tools:1.99.x util/build-in-docker.sh
 
-      - name: Upload Artifact
+      - name: Find and Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: CD Image
-          path: |
-            *.iso
-
-      - name: Draft Release notes
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: bash util/generate-release-notes.sh > notes.md
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ToaruOS ${{ github.ref }}
-          body_path: ./notes.md
-          draft: true
-
-      - name: Upload Release Image
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./image.iso
-          asset_name: image.iso
-          asset_content_type: application/x-iso9660-image
+          name: toaruos.iso
+          path: "*.iso"
