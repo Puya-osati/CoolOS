@@ -24,7 +24,8 @@ jobs:
         with:
           name: build
           path: |
-            image.iso
+            path: |
+              build/toaruos-x86_64.iso
       - name: Draft Release notes
         if: startsWith(github.ref, 'refs/tags/v')
         run: bash util/generate-release-notes.sh > notes.md
