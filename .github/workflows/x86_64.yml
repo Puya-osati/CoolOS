@@ -30,8 +30,8 @@ jobs:
       - name: Upload Branch Image
         uses: actions/upload-artifact@v4
         with:
-          name: toaruos-x86_64.iso
-          path: build/toaruos-x86_64.iso
+          name: toaruos-image.iso
+          path: image.iso  # ⬅️ مسیر صحیح فایل ISO تولید شده
 
       - name: Draft Release notes
         if: startsWith(github.ref, 'refs/tags/v')
@@ -56,6 +56,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/toaruos-x86_64.iso
-          asset_name: toaruos-x86_64.iso
+          asset_path: ./image.iso  # ⬅️ همینجا هم اصلاح شد
+          asset_name: toaruos-image.iso
           asset_content_type: application/x-iso9660-image
